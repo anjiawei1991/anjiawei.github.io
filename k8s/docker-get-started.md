@@ -47,7 +47,7 @@ REPOSITORY          TAG                 IMAGE ID            CREATED             
 hello-world         latest              fce289e99eb9        6 months ago        1.84kB
 ```
 
-以及 `docker container ls` 来查看当前的容器列表，这个命令默认不会显示已经退出的容器，加上 `--all` 标签可以展示容器。
+以及 `docker container ls` 来查看当前的容器列表，这个命令默认只会显示正在运行中的容器，加上 `--all` 标签才可以展示包括已退出的容器。
 
 ```sh
 $ sudo docker container ls --all
@@ -155,11 +155,11 @@ Successfully built f64d1428d623
 Successfully tagged myapp:latest
 ```
 
-有必要先指出的是，Docker 使用的是 CS（客户端/服务器） 架构，在安装完 Docker 后，会启动一个 Docker 守护进程，它相当于服务器。在本地使用的 `docker image`、`docker container`、`docker build`等命令，都是客户端命令，它和服务器交互，并且输出操作结果。
+有必要先指出的是，Docker 使用的是 CS（客户端/服务器） 架构，在安装完 Docker 后，会启动一个 Docker 守护进程，它相当于服务器。`docker image`、`docker container`、`docker build` 等命令，都是客户端命令，它和服务器交互，并且输出操作结果。
 
-当执行 build 时，docker 客户端将当前目录（由第一个参数指定的）的所有文件发送到服务器，然后服务器开始构建镜像。由于 Docker 会将所有内容都发给服务器，所以要确保不要在当前目录放一些不必要的文件。
+当执行 build 时，docker 客户端将当前目录（由第一个参数指定的）的所有文件发送到服务器，然后服务器开始构建镜像。由于 Docker 会将所有内容都发给服务器，所以应当不要在当前目录放一些不必要的文件。
 
-接下来，服务器开始构建镜像，它一条一条地执行 Dockerfile 中的指令，每条命令都会产生一个新的镜像层。 例如执行 `FROM golang:1.12` 时，由于本地没有 golang:1.12 镜像，所以会先从镜像仓库中拉取镜像，拉取的过程中也是一层一层的处理的。如果本地已经有对应的层了，那么就不会再拉取。再如 `ADD` 命令，它将 main.go 文件拷贝到镜像的工作目录中，这也会产生一个新的层。
+接下来，服务器开始构建镜像，它一条一条地执行 Dockerfile 中的指令，每条命令都会产生一个新的镜像层。 例如执行 `FROM golang:1.12` 时，由于本地没有 golang:1.12 镜像，所以会先从镜像仓库中拉取镜像，拉取的过程中也是一层一层的处理的，如果本地已经有对应的层了，那么就不会再拉取。再如 `ADD` 命令，它将 main.go 文件拷贝到镜像的工作目录中，这也会产生一个新的层。
 
 镜像构建成功后，可以使用 `docker image ls` 命令查看当前的镜像列表：
 
@@ -169,14 +169,69 @@ REPOSITORY          TAG                 IMAGE ID            CREATED             
 myapp               latest              7b3f0b9b4107        About 2 minutes ago   781MB
 ```
 
-我们也可以使用 `docker image tag myapp <yourname>/myapp` 为镜像指定一个新的名字，这样就可以将镜像推送到官方的镜像仓库了: `docker push <yourname>/myapp`（在推送之前，你需要先在 https://hub.docker.com 创建账号）
+使用 `docker image tag myapp <yourname>/myapp` 为镜像指定一个新的名字，这样就可以将镜像推送到官方的镜像仓库了: `docker push <yourname>/myapp`（在推送之前，你需要先在 https://hub.docker.com 创建账号）
 
 ## 运行容器
 
-有了镜像，现在我们可以开始运行自己的镜像了，这就像运行 hello-world 一样简单:
+有了镜像，现在我们可以开始运行自己的镜像了:
 
 ```shell
-$ sudo docker run -p8080:80 myapp
+$ sudo docker run --name myapp_container -p8080:80 -d myapp
 ```
 
-此命令运行 myapp 镜像，`-p8080:80` 参数将主机的 8080 端口映射到容器的 80 端口。
+此命令基于镜像 myapp 启动一个新容器，这个容器与终端分离 (-d 标志)，这意味着它在后台运行。容器的名字由 `--name` 参数指定为 `myapp_container`（如果没有此参数， Docker 会为我们生成一个随机的名字）。`-p8080:80` 参数将主机的 8080 端口映射到容器的 80 端口。如果你将镜像推送到了镜像仓库，也可以在任何安装了 Docker 的机器上这样启动容器： `docker run --name myapp_container -p8080:80 -d <yourname>/myapp`
+
+可以通过 `http://localhost:8080` 来访问我们的服务： 
+
+```shell
+$ curl http://localhost:8080
+服务器的主机名为: 853f812a44bb 服务启动命令为: [./app]
+```
+
+可以看到我们的服务运行在一个主机名为 853f812a44bb 的主机上，它的启动命令是就是 Dockerfile 中使用 CMD 指定的 ./app。也可以这样启动容器: `sudo docker run --name myapp_container -p8080:80 -d myapp param1 param2`，这样对应的输出就会变成 `[./app param1 param2]`，因为 `docker run` 会将镜像名称后面的所有参数都作为启动命令的额外参数。
+
+通过 `docker container ls` 或者 `docker ps` 都可以看到当前运行中的容器：
+
+```shell
+$ sudo docker container ls
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                  NAMES
+853f812a44bb        myapp               "/bin/sh -c ./app"   3 minutes ago       Up 3 minutes        0.0.0.0:8080->80/tcp   myapp_container
+```
+
+通过 `docker exec -it myapp_container bash` 可以进入容器内部。－it 选项是下面两个选项的简写：
+
+* -i，确保标准输入流保持开放。 需要在 shell 中输入命令。 
+* -t，分配一个伪终端（TTY）。 
+
+通过 ps 命令可以看到当前容器内运行的进程：
+
+```bash
+$ docker exec -it myapp_container bash
+root@853f812a44bb:/app#
+root@853f812a44bb:/app# ps aux
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.0   4280   736 ?        Ss   01:35   0:00 /bin/sh -c ./app
+root         6  0.0  0.0 219544  8608 ?        Sl   01:35   0:00 ./app
+root        12  0.6  0.0  18188  3232 pts/0    Ss   01:36   0:00 bash
+root        17  0.0  0.0  36636  2776 pts/0    R+   01:37   0:00 ps aux
+```
+
+容器中启动了 4 个进程:
+
+* /bin/sh -c ./app： 由于 Dockerfile 中的 CMD 的形式是 `shell form`，所以容器运行时启动的是一个 sh 进程，它用 -c 选项加上参数 ./app 启动 ./app。
+* ./app： 这就是我们期望在容器内部运行的进程
+* bash： 我们刚才通过 exec 命令创建的进程
+* ps aux：和往常一样， ps 命令会输出它自己
+
+当要关闭服务时，可以使用 `docker stop` 命令停止容器的运行， `docker rm` 命令移除容器（移除后才是真正的删除，它会删除容器内的所有文件）：
+
+```sh
+$ sudo docker stop myapp_container
+myapp_container
+
+$ sudo docker rm myapp_container
+myapp_container
+```
+
+同一个镜像可以在同一台机器中运行多个不同的容器，它们的文件系统、进程树等都是独立的。容器使用了类似写时复制的技术，初始时它基于镜像创建了一个运行中的容器，它的所有文件和镜像一样，但是当它需要修改某个文件时，就会在容器内部创建这个文件的一份拷贝，而镜像中的文件不受影响。
+
