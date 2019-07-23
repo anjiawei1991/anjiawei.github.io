@@ -32,7 +32,7 @@ spec:
         spec:
             containers:
             - name: myapp
-              image: user/myapp:0.0.1
+              image: user/myapp:0.0.2
               ports:
               - containerPort: 80
                 protocol: TCP
@@ -134,7 +134,7 @@ myapp-deployment-7558d88658-tpt55   1/1     Running   0          2m
 通过 --show-labels 参数可以看到 pod 的标签：
 
 ```s
-master $ kubectl get pods --show-labels
+$ kubectl get pods --show-labels
 NAME                                READY   STATUS    RESTARTS   AGE   LABELS
 myapp                               1/1     Running   0          58s   <none>
 myapp-deployment-7558d88658-r2nzx   1/1     Running   0          2m    app=myapp,pod-template-hash=7558d88658
@@ -176,6 +176,7 @@ No resources found.
 
 ```s
 $ kubectl apply -f myapp-deployment.yaml
+$ kubectl get pods
 myapp-deployment-7558d88658-tjfwn   1/1     Running             0          49s
 myapp-deployment-7558d88658-f7stc   1/1     Running             0          51s
 myapp-deployment-7558d88658-gn9k6   1/1     Running             0          52s
